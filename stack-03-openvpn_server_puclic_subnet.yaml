@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create OpenVPN EC2 Instance for DemoApp
+
+Parameters:
+
+#
+# Parameters
+#
+  InstanceTypeParameter:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+    Description: Enter t2.micro or t2.small. Default is t2.micro.
+
+  KeyPair:
+    Description: 'SSH KeyPair choise.'
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: 'fr_demo'
+
+  ParentStackName:
+    Description: 'ParentStackName must be set for proper variables inheritance from previous stacks.'
+    Type: String
+
+Resources:
+
+#
+# OpenVPN EC2 Instance configuration
+#
+  SecurityGroupOVPN:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: {'Fn::ImportValue': !Sub '${ParentStackName}-VPCID'}
+      GroupName: 'SG-OpenVPN'
+      GroupDescription: Enable OVPN via UDP port 51119
+      SecurityGroupIngress:
+        IpProtocol: udp
+        FromPort: 51194
+        ToPort: 51194
+        CidrIp: 0.0.0.0/0
+
+  OVPNEC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: 't2.micro'
+      ImageId: 'ami-090f10efc254eaf55'
+      KeyName: !Ref KeyPair
+      Tags:
+        - Key: Name
+          Value: openvpn-server
+      NetworkInterfaces:
+        - GroupSet:
+            - !Ref SecurityGroupOVPN
+          AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          DeleteOnTermination: 'true'
+          SubnetId: {'Fn::ImportValue': !Sub '${ParentStackName}-PublicSubnetBID'}
